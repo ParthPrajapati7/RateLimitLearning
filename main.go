@@ -7,6 +7,13 @@ import (
 	"net/url"
 )
 
+type RateLimiter interface {
+	Allow(clientID string) bool
+}
+
+type MockLimiter struct{}	
+
+
 func startBackendService() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
