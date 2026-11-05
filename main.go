@@ -11,10 +11,13 @@ type RateLimiter interface {
 	Allow(clientID string) bool
 }
 
-var temp RateLimiter = (*MockLimiter)(nil)
+var _ RateLimiter = (*MockLimiter)(nil)
 
-type MockLimiter struct{}	
+type MockLimiter struct{}
 
+func (m *MockLimiter) Allow(clientID string) bool {
+	return true
+}
 
 func startBackendService() {
 	mux := http.NewServeMux()
