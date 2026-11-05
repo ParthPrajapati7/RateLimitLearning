@@ -11,6 +11,8 @@ type RateLimiter interface {
 	Allow(clientID string) bool
 }
 
+var temp RateLimiter = (*MockLimiter)(nil)
+
 type MockLimiter struct{}	
 
 
