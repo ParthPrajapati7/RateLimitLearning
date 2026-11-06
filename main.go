@@ -19,15 +19,19 @@ func (m *MockLimiter) Allow(clientID string) bool {
 	return true
 }
 
-func startBackendService() {
+// newBackendHandler builds the dummy backend's routes (separated so tests can use it).
+func newBackendHandler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Hello from the Backend Service!\n"))
 	})
+	return mux
+}
 
+func startBackendService() {
 	log.Println("Dummy backend running on http://localhost:8081")
-	log.Fatal(http.ListenAndServe(":8081", mux))
+	log.Fatal(http.ListenAndServe(":8081", newBackendHandler()))
 }
 
 func startGateway(targetURL string, limiter RateLimiter) {
@@ -37,20 +41,25 @@ func startGateway(targetURL string, limiter RateLimiter) {
 		log.Fatal("Invalid backend URL:", err)
 	}
 
+	log.Println("API Gateway running on http://localhost:8082")
+	log.Fatal(http.ListenAndServe(":8082", newGatewayHandler(backendURL, limiter)))
+}
+
+// newGatewayHandler builds the gateway's routes, proxying to backendURL
+// (separated so tests can use it).
+func newGatewayHandler(backendURL *url.URL, limiter RateLimiter) http.Handler {
 	// Go's built-in reverse proxy does all the heavy lifting
 	proxy := httputil.NewSingleHostReverseProxy(backendURL)
 
 	gatewayMux := http.NewServeMux()
 
-	// This handler is our gateway's front door. 
+	// This handler is our gateway's front door.
 	// Right now it blindly proxies. In Step 2, we will add rate limiting here.
 	gatewayMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[Gateway] Received request: %s %s -> Forwarding", r.Method, r.URL.Path)
 		proxy.ServeHTTP(w, r)
 	})
-
-	log.Println("API Gateway running on http://localhost:8082")
-	log.Fatal(http.ListenAndServe(":8082", gatewayMux))
+	return gatewayMux
 }
 
 func main() {
@@ -58,5 +67,5 @@ func main() {
 	go startBackendService()
 
 	// Start the Gateway on the main thread
-	startGateway("http://localhost:8081")
+	startGateway("http://localhost:8081", &MockLimiter{})
 }
