@@ -30,7 +30,7 @@ func startBackendService() {
 	log.Fatal(http.ListenAndServe(":8081", mux))
 }
 
-func startGateway(targetURL string) {
+func startGateway(targetURL string, limiter RateLimiter) {
 	// Parse the target URL ( backend)
 	backendURL, err := url.Parse(targetURL)
 	if err != nil {
